@@ -51,3 +51,15 @@ definitions:
               description: When the model emerged on the market
               example: "1996"
 
+  Customers:
+    type: array
+    items:
+      type: object
+      properties:
+        firstName:
+          type: string
+        last_name:
+          type: string
+        favorite_Model:
+          type: string
+

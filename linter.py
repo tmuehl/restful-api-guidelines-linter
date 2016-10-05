@@ -107,10 +107,17 @@ def lint_property_names(spec, resolver):
     """
     # TODO: this only iterates over global definitions
     definitions = []
+    # add all toplevel definitions
     for def_name, definition in spec.get('definitions', {}).items():
-        if definition.get('type') == 'object':
+        def_type = definition.get('type')
+        if def_type == 'object':
             definitions.append((def_name, definition))
-
+        elif def_type == 'array':
+            items_def = definition.get('items')
+            items_props = items_def.get('properties')
+            if items_props:
+                definitions.append(('{}#items'.format(def_name), items_def))
+    # check properties
     while definitions:
         def_name, definition = definitions.pop()
         for sub_prop_name, sub_prop in definition.get('properties', {}).items():
