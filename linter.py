@@ -5,6 +5,7 @@ import re
 import sys
 
 import click
+import inflect
 import yaml
 from clickclick import error, warning
 from swagger_spec_validator.validator20 import validate_spec
@@ -142,6 +143,25 @@ def lint_response_objects(spec, resolver):
                         yield 'paths/"{}"/{}/responses/{}'.format(path_name, method_name, status_code)
 
 
+def lint_plural_resource_names(spec, resolver):
+    """
+    Must: Pluralize Resource Names
+
+    https://zalando.github.io/restful-api-guidelines/naming/Naming.html#must-pluralize-resource-names
+    """
+    inflect_engine = inflect.engine()
+    for path_name, methods_available in spec.get('paths', {}).items():
+        path_name_without_variables = re.sub('{[^}]*}', '', path_name)
+        for segment in path_name_without_variables.split('/'):
+            if segment != '.well-known':
+                resource = ' '.join(segment.split('-'))
+                if resource:
+                    singular = inflect_engine.singular_noun(resource)
+                    plural = inflect_engine.plural_noun(resource)
+                    if singular == resource or (not singular and plural and plural != resource):
+                        yield 'paths/"{}"'.format(path_name), '"{}" is not in plural form'.format(resource)
+
+
 def run_linter(spec_file):
     spec = yaml.safe_load(spec_file)
     spec = compatibility_layer(spec)
@@ -149,7 +169,6 @@ def run_linter(spec_file):
         resolver = validate_spec(spec)
     except Exception as e:
         msg = 'Error during Swagger schema validation:\n{}'.format(e)
-        error(msg)
         return [Issue(location='', message=msg, guideline='Must: Provide API Reference Definition using OpenAPI')]
 
     # collect all "rules" defined as functions starting with "lint_"
@@ -162,8 +181,7 @@ def run_linter(spec_file):
             else:
                 location = issue
                 message = None
-            warning('{}: {}{}'.format(location, message + ' ' if message else '', func.__doc__))
-            issues.append(Issue(location=location, message=message, guideline=func.__doc__))
+            issues.append(Issue(location=location, message=message or '', guideline=func.__doc__))
     return sorted(issues)
 
 
@@ -171,6 +189,8 @@ def run_linter(spec_file):
 @click.argument('spec_file', type=click.File('rb'))
 def cli(spec_file):
     issues = run_linter(spec_file)
+    for issue in issues:
+        warning('{}: {}{}'.format(issue.location, issue.message, issue.guideline))
     sys.exit(len(issues))
 
 
