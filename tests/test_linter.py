@@ -30,3 +30,17 @@ def test_pet_store(monkeypatch):
 
     assert len(issues) == 1
     assert issues[0].location == 'paths/"/pets"/get/responses/200'
+
+
+def test_snake_case_properties(monkeypatch):
+    with (TEST_FOLDER / 'fixtures/snake-case-properties.yaml').open('rb') as fd:
+        issues = run_linter(fd)
+
+    assert len(issues) == 4
+
+    issue_locations = sorted(list(map(lambda issue: issue.location, issues)))
+
+    assert issues[0].location == 'definitions/CarCompany/car_models#items/modelName'
+    assert issues[1].location == 'definitions/CarCompany/car_models#items/year_to_Market'
+    assert issues[2].location == 'definitions/CarCompany/ceo/lastName'
+    assert issues[3].location == 'definitions/CarCompany/companyName'
